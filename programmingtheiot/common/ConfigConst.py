@@ -168,7 +168,7 @@ MEM_UTIL_TYPE             = 9003
 
 CPU_UTIL_NAME  = 'DeviceCpuUtil'
 DISK_UTIL_NAME = 'DeviceDiskUtil'
-MEM_UTIL_NAME  = 'DeviceMemUtil'
+MEM_UTIL_NAME = "MemUtil"
 
 #####
 # typical topic naming conventions
@@ -196,8 +196,8 @@ CDA_SYSTEM_PERF_MSG_RESOURCE          = PRODUCT_NAME + '/' + CONSTRAINED_DEVICE 
 # the directory structure for python-components
 
 # NOTE: You may need to update these relative paths!!
-DEFAULT_CONFIG_FILE_NAME = './config/PiotConfig.props'
-DEFAULT_CRED_FILE_NAME   = './cred/PiotCred.props'
+DEFAULT_CONFIG_FILE_NAME = '/home/tosin/piot/cda-python-components/config/PiotConfig.props'
+DEFAULT_CRED_FILE_NAME   = '/home/tosin/piot/cda-python-components/cred/PiotCred.props'
 
 PARENT_PATH = '../'
 

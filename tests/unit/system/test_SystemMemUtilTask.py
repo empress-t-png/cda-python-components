@@ -1,35 +1,17 @@
 #####
 # 
-# This class is part of the Programming the Internet of Things
-# project, and is available via the MIT License, which can be
-# found in the LICENSE file at the top level of this repository.
+##
+# This class is part of the Programming the Internet of Things project.
 # 
-# Copyright (c) 2020 by Andrew D. King
-# 
+# It is provided as a simple shell to guide the student and assist with
+# implementation for the Programming the Internet of Things exercises,
+# and designed to be modified by the student as needed.
+#import logging
+import psutil
 
-import logging
-import unittest
+import programmingtheiot.common.ConfigConst as ConfigConst
 
-from programmingtheiot.cda.system.SystemMemUtilTask import SystemMemUtilTask
-
-class SystemMemUtilTaskTest(unittest.TestCase):
-	"""
-	This test case class contains very basic unit tests for
-	SystemMemUtilTask. It should not be considered complete,
-	but serve as a starting point for the student implementing
-	additional functionality within their Programming the IoT
-	environment.
-	"""
-	
-	@classmethod
-	def setUpClass(self):
-		logging.basicConfig(format = '%(asctime)s:%(module)s:%(levelname)s:%(message)s', level = logging.DEBUG)
-		logging.info("Testing SystemMemUtilTask class...")
-		self.memUtilTask = SystemMemUtilTask()
-	
-	def setUp(self):
-		pass
-
+from programmingtheiot.cda.system.BaseSystemUtilTask import BaseSystemUtilTask
 	def tearDown(self):
 		pass
 
