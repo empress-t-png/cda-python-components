@@ -4,57 +4,89 @@
 # project, and is available via the MIT License, which can be
 # found in the LICENSE file at the top level of this repository.
 # 
-# You may find it more helpful to your design to adjust the
-# functionality, constants and interfaces (if there are any)
-# provided within in order to meet the needs of your specific
-# Programming the Internet of Things project.
-# 
 
 import logging
-import random
 
 import programmingtheiot.common.ConfigConst as ConfigConst
 
 from programmingtheiot.data.SensorData import SensorData
+from programmingtheiot.cda.sim.SensorDataGenerator import SensorDataGenerator
 
 class BaseSensorSimTask():
-	"""
-	Shell representation of class for student implementation.
-	
-	"""
-
-	DEFAULT_MIN_VAL = 0.0
-	DEFAULT_MAX_VAL = 1000.0
-	
-	def __init__(self, name = ConfigConst.NOT_SET, typeID: int = ConfigConst.DEFAULT_SENSOR_TYPE, dataSet = None, minVal: float = DEFAULT_MIN_VAL, maxVal: float = DEFAULT_MAX_VAL):
-		pass
-	
-	def generateTelemetry(self) -> SensorData:
-		"""
-		Implement basic logging and SensorData creation. Sensor-specific functionality
-		should be implemented by sub-class.
-		
-		A local reference to SensorData can be contained in this base class.
-		"""
-		pass
-	
-	def getTelemetryValue(self) -> float:
-		"""
-		If a local reference to SensorData is not None, simply return its current value.
-		If SensorData hasn't yet been created, call self.generateTelemetry(), then return
-		its current value.
-		"""
-		pass
-	
-	def getLatestTelemetry(self) -> SensorData:
-		"""
-		This can return the current SensorData instance or a copy.
-		"""
-		pass
-	
-	def getName(self) -> str:
-		pass
-	
-	def getTypeID(self) -> int:
-		pass
-	
+    """
+    Base class for simulated sensor tasks.
+    """
+    
+    def __init__(self, name = ConfigConst.NOT_SET, typeID: int = ConfigConst.DEFAULT_SENSOR_TYPE, dataSet = None, minVal: float = 0.0, maxVal: float = 1000.0):
+        self.name = name
+        self.typeID = typeID
+        self.dataSet = dataSet
+        self.latestSensorData = None
+        
+        # Create the data generator
+        self.dataGenerator = SensorDataGenerator()
+        
+        # Configure min/max values
+        self.dataGenerator.minValue = minVal
+        self.dataGenerator.maxValue = maxVal
+        
+        if self.dataSet is not None:
+            self.dataGenerator.enableRandomness = False
+            self.useDataSet = True
+        else:
+            self.dataGenerator.enableRandomness = True
+            self.useDataSet = False
+            
+        logging.info("Initialized sensor simulation task: %s", self.name)
+    
+    def generateTelemetry(self) -> SensorData:
+        """
+        Generates telemetry data and returns a SensorData object.
+        """
+        sensorData = SensorData(name=self.name, typeID=self.typeID)
+        sensorVal = self.getTelemetryValue()
+        sensorData.setValue(sensorVal)
+        
+        self.latestSensorData = sensorData
+        
+        logging.debug("Generated sensor data: %s", sensorData)
+        
+        return sensorData
+    
+    def getTelemetryValue(self) -> float:
+        """
+        Generates and returns the telemetry value based on sensor type.
+        """
+        if self.typeID == ConfigConst.TEMP_SENSOR_TYPE:
+            return self.dataGenerator.generateTemperature()
+        elif self.typeID == ConfigConst.HUMIDITY_SENSOR_TYPE:
+            return self.dataGenerator.generateHumidity()
+        elif self.typeID == ConfigConst.PRESSURE_SENSOR_TYPE:
+            return self.dataGenerator.generatePressure()
+        else:
+            return self.dataGenerator.generateTelemetry(
+                self.dataGenerator.minValue,
+                self.dataGenerator.maxValue,
+                self.dataGenerator.minValue
+            )
+    
+    def getLatestTelemetry(self) -> SensorData:
+        """
+        Returns the latest SensorData instance.
+        """
+        if self.latestSensorData is None:
+            self.latestSensorData = self.generateTelemetry()
+            
+        return self.latestSensorData
+    
+    def getName(self) -> str:
+        """
+        Returns the name of this sensor simulation task.
+        """
+        return self.name
+    
+    def getTypeID(self) -> int:
+        """
+        Returns the type ID of this sensor.
+        """
+        return self.typeID
