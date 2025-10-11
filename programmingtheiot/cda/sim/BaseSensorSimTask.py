@@ -4,6 +4,9 @@
 # 
 
 import logging
+
+import programmingtheiot.common.ConfigConst as ConfigConst
+
 from programmingtheiot.data.SensorData import SensorData
 from programmingtheiot.cda.sim.SensorDataGenerator import SensorDataGenerator
 
@@ -12,42 +15,45 @@ class BaseSensorSimTask():
     Base class for simulated sensor tasks.
     """
     
-    def __init__(self, name: str = "BaseSensorSimTask", typeID: int = 0, dataSet = None):
+    def __init__(self, name: str = "BaseSensorSimTask", typeID: int = 0, dataSet = None, minVal: float = 0.0, maxVal: float = 1000.0):
         self.name = name
         self.typeID = typeID
         self.dataSet = dataSet
-        self.generator = SensorDataGenerator()
+        self.dataGenerator = SensorDataGenerator()
+        self.latestSensorData = None
         
         if self.dataSet is not None:
-            self.generator.enableRandomness = False
+            self.dataGenerator.enableRandomness = False
             self.useDataSet = True
         else:
-            self.generator.enableRandomness = True
+            self.dataGenerator.enableRandomness = True
             self.useDataSet = False
             
         logging.info("Initialized sensor simulation task: " + self.name)
     
     def generateTelemetry(self) -> SensorData:
         """
-        Abstract method to be implemented by subclasses.
-        Should return a SensorData object with simulated readings.
+        Generates telemetry data and returns a SensorData object.
         """
-        pass
+        sensorData = SensorData(name=self.name, typeID=self.typeID)
+        sensorVal = self.getTelemetryValue()
+        sensorData.setValue(sensorVal)
+        
+        self.latestSensorData = sensorData
+        
+        logging.debug("Generated sensor data: %s", sensorData)
+        
+        return sensorData
     
     def getTelemetryValue(self) -> float:
         """
-        Generates and returns the telemetry value.
+        Generates and returns the telemetry value based on sensor type.
         """
-        if self.useDataSet:
-            # Use predefined dataset if available
-            return self.generator.generateTelemetry()
+        if self.typeID == ConfigConst.TEMP_SENSOR_TYPE:
+            return self.dataGenerator.generateTemperature()
+        elif self.typeID == ConfigConst.HUMIDITY_SENSOR_TYPE:
+            return self.dataGenerator.generateHumidity()
+        elif self.typeID == ConfigConst.PRESSURE_SENSOR_TYPE:
+            return self.dataGenerator.generatePressure()
         else:
-            # Generate random value based on sensor type
-            if self.typeID == 1:  # Temperature
-                return self.generator.generateTemperature()
-            elif self.typeID == 2:  # Humidity
-                return self.generator.generateHumidity()
-            elif self.typeID == 3:  # Pressure
-                return self.generator.generatePressure()
-            else:
-                return 0.0
+            return 0.0
