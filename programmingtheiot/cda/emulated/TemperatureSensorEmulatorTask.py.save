@@ -1,4 +1,4 @@
-#####
+y#####
 # 
 # This class is part of the Programming the Internet of Things
 # project, and is available via the MIT License, which can be
@@ -7,7 +7,8 @@
 
 from programmingtheiot.data.SensorData import SensorData
 import programmingtheiot.common.ConfigConst as ConfigConst
-from programmingtheiot.cda.sim.BaseSensorSimTask import BaseSensorSimTask
+from programmingtheiot.cda.system.sim.BaseSensorSimTask import BaseSensorSimTask
+
 class TemperatureSensorEmulatorTask(BaseSensorSimTask):
 	"""
 	Temperature sensor emulator that generates simulated temperature data.
@@ -28,6 +29,11 @@ class TemperatureSensorEmulatorTask(BaseSensorSimTask):
 		
 		sensorVal = self.generator.generateTelemetry()
 		
-		sensorData.setValue(sensorVal)
-		
-		return sensorData
+		sensorData.setValue(sensorVa
+from programmingtheiot.cda.system.sim.BaseSensorSimTask import BaseSensorSimTask
+
+cd ~/piot/cda-python-components
+
+from programmingtheiot.cda.system.sim.BaseSensorSimTask import
+
+
