@@ -2,10 +2,6 @@
 # 
 # This class is part of the Programming the Internet of Things project.
 # 
-# It is provided as a simple shell to guide the student and assist with
-# implementation for the Programming the Internet of Things exercises,
-# and designed to be modified by the student as needed.
-#
 
 import logging
 import random
@@ -15,21 +11,33 @@ class SensorDataGenerator():
     Generates simulated sensor data with configurable ranges and patterns.
     """
     
+    # Temperature constants (Celsius)
+    LOW_NORMAL_INDOOR_TEMP = 18.0
+    HI_NORMAL_INDOOR_TEMP = 24.0
+    
+    # Humidity constants (percentage)
+    LOW_NORMAL_ENV_HUMIDITY = 30.0
+    HI_NORMAL_ENV_HUMIDITY = 70.0
+    
+    # Pressure constants (kPa)
+    LOW_NORMAL_ENV_PRESSURE = 990.0
+    HI_NORMAL_ENV_PRESSURE = 1010.0
+    
     def __init__(self):
         self.enableRandomness = True
         self.useSeconds = False
         
         # Temperature settings (Celsius)
-        self.minTemperature = 18.0
-        self.maxTemperature = 24.0
+        self.minTemperature = self.LOW_NORMAL_INDOOR_TEMP
+        self.maxTemperature = self.HI_NORMAL_INDOOR_TEMP
         
         # Humidity settings (percentage)
-        self.minHumidity = 30.0
-        self.maxHumidity = 70.0
+        self.minHumidity = self.LOW_NORMAL_ENV_HUMIDITY
+        self.maxHumidity = self.HI_NORMAL_ENV_HUMIDITY
         
         # Pressure settings (kPa)
-        self.minPressure = 990.0
-        self.maxPressure = 1010.0
+        self.minPressure = self.LOW_NORMAL_ENV_PRESSURE
+        self.maxPressure = self.HI_NORMAL_ENV_PRESSURE
         
         self.curTempVal = self.minTemperature
         self.curHumidityVal = self.minHumidity
@@ -42,10 +50,8 @@ class SensorDataGenerator():
         newVal = curVal
         
         if self.enableRandomness:
-            # Generate random value within range
             newVal = random.uniform(minVal, maxVal)
         else:
-            # Increment value gradually
             increment = 0.1
             newVal = curVal + increment
             
@@ -86,10 +92,3 @@ class SensorDataGenerator():
             self.curPressureVal
         )
         return self.curPressureVal
-
-
-
-
-
-	
-
