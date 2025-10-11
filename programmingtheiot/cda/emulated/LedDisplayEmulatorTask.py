@@ -12,25 +12,30 @@
 
 import logging
 
+from programmingtheiot.data.ActuatorData import ActuatorData
+
 import programmingtheiot.common.ConfigConst as ConfigConst
 
-from programmingtheiot.common.ConfigUtil import ConfigUtil
 from programmingtheiot.cda.sim.BaseActuatorSimTask import BaseActuatorSimTask
-
-from pisense import SenseHAT
 
 class LedDisplayEmulatorTask(BaseActuatorSimTask):
 	"""
-	Shell representation of class for student implementation.
-	
+	LED Display actuator emulator.
 	"""
 
 	def __init__(self):
-		pass
-
-	def _activateActuator(self, val: float = ConfigConst.DEFAULT_VAL, stateData: str = None) -> int:
-		pass
-
-	def _deactivateActuator(self, val: float = ConfigConst.DEFAULT_VAL, stateData: str = None) -> int:
-		pass
+		super(LedDisplayEmulatorTask, self).__init__(
+			actuatorType=ConfigConst.LED_DISPLAY_ACTUATOR_TYPE,
+			simpleName="LED_Display"
+		)
 	
+	def _handleActuation(self, cmd: int, val: float = 0.0, stateData: str = None) -> int:
+		if cmd == ConfigConst.COMMAND_ON:
+			logging.info(f"LED Display turned ON - Message: {stateData if stateData else 'No message'}")
+			return 0
+		elif cmd == ConfigConst.COMMAND_OFF:
+			logging.info("LED Display turned OFF")
+			return 0
+		else:
+			logging.warning(f"LED Display received unknown command: {cmd}")
+			return -1

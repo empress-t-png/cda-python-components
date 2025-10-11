@@ -21,12 +21,28 @@ from pisense import SenseHAT
 
 class PressureSensorEmulatorTask(BaseSensorSimTask):
 	"""
-	Shell representation of class for student implementation.
-	
+	Pressure sensor emulator that generates simulated pressure data.
 	"""
 
 	def __init__(self, dataSet = None):
-		pass
+		super(PressureSensorEmulatorTask, self).__init__(
+			sensorType=ConfigConst.PRESSURE_SENSOR_TYPE,
+			minVal=SensorData.DEFAULT_MIN_PRESSURE_VAL,
+			maxVal=SensorData.DEFAULT_MAX_PRESSURE_VAL,
+			sensorName=ConfigConst.PRESSURE_SENSOR_NAME
+		)
 	
 	def generateTelemetry(self) -> SensorData:
-		pass
+		sensorData = SensorData(
+			sensorType=ConfigConst.PRESSURE_SENSOR_TYPE,
+			name=ConfigConst.PRESSURE_SENSOR_NAME
+		)
+		
+		# Get simulated pressure value from parent class
+		sensorVal = self.generateTelemetryValue()
+		
+		sensorData.setValue(sensorVal)
+		
+		self.latestSensorData = sensorData
+		
+		return sensorData
