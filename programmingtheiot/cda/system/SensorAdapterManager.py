@@ -7,6 +7,7 @@
 
 import logging
 
+from importlib import import_module
 from apscheduler.schedulers.background import BackgroundScheduler
 
 import programmingtheiot.common.ConfigConst as ConfigConst
@@ -73,6 +74,23 @@ class SensorAdapterManager(object):
             self.humidityAdapter = HumiditySensorSimTask()
             self.pressureAdapter = PressureSensorSimTask()
             self.tempAdapter = TemperatureSensorSimTask()
+        else:
+            logging.info("Creating sensor emulator tasks...")
+            
+            # Load humidity sensor emulator
+            heModule = import_module('programmingtheiot.cda.emulated.HumiditySensorEmulatorTask', 'HumiditySensorEmulatorTask')
+            heClazz = getattr(heModule, 'HumiditySensorEmulatorTask')
+            self.humidityAdapter = heClazz()
+            
+            # Load pressure sensor emulator
+            peModule = import_module('programmingtheiot.cda.emulated.PressureSensorEmulatorTask', 'PressureSensorEmulatorTask')
+            peClazz = getattr(peModule, 'PressureSensorEmulatorTask')
+            self.pressureAdapter = peClazz()
+            
+            # Load temperature sensor emulator
+            teModule = import_module('programmingtheiot.cda.emulated.TemperatureSensorEmulatorTask', 'TemperatureSensorEmulatorTask')
+            teClazz = getattr(teModule, 'TemperatureSensorEmulatorTask')
+            self.tempAdapter = teClazz()
     
     def handleTelemetry(self):
         """
@@ -86,9 +104,9 @@ class SensorAdapterManager(object):
         pressureData.setLocationID(self.locationID)
         tempData.setLocationID(self.locationID)
         
-        logging.debug('Generated humidity data: ' + str(humidityData))
-        logging.debug('Generated pressure data: ' + str(pressureData))
-        logging.debug('Generated temp data: ' + str(tempData))
+        logging.debug('Generated humidity data: ' + str(humidityData.getValue()))
+        logging.debug('Generated pressure data: ' + str(pressureData.getValue()))
+        logging.debug('Generated temp data: ' + str(tempData.getValue()))
         
         if self.dataMsgListener:
             self.dataMsgListener.handleSensorMessage(humidityData)
