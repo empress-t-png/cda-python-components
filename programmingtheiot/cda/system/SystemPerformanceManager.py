@@ -46,26 +46,52 @@ class SystemPerformanceManager(object):
         
         self.dataMsgListener = None
         
-        # NEW CODE: Initialize scheduler and add job
+        # Initialize scheduler and add job
         self.scheduler = BackgroundScheduler()
         self.scheduler.add_job(self.handleTelemetry, 'interval', seconds=self.pollRate)
         
-        # NEW CODE: Create system utilization tasks
+        # Create system utilization tasks
         self.cpuUtilTask = SystemCpuUtilTask()
         self.memUtilTask = SystemMemUtilTask()
     
     def handleTelemetry(self):
-        # NEW CODE: Get telemetry values and log them
+        """
+        Handles telemetry collection and notification.
+        Gets CPU and memory utilization, stores in SystemPerformanceData,
+        and notifies listener if set.
+        """
+        # Get telemetry values
         cpuUtilPct = self.cpuUtilTask.getTelemetryValue()
         memUtilPct = self.memUtilTask.getTelemetryValue()
         
         logging.debug('CPU utilization is %s percent, and memory utilization is %s percent.', str(cpuUtilPct), str(memUtilPct))
+        
+        # Create SystemPerformanceData and populate it
+        sysPerfData = SystemPerformanceData()
+        sysPerfData.setLocationID(self.locationID)
+        sysPerfData.setCpuUtilization(cpuUtilPct)
+        sysPerfData.setMemoryUtilization(memUtilPct)
+        
+        # Notify listener if one is set
+        if self.dataMsgListener:
+            self.dataMsgListener.handleSystemPerformanceMessage(data = sysPerfData)
     
     def setDataMessageListener(self, listener: IDataMessageListener) -> bool:
-        pass
+        """
+        Sets the data message listener for callback notifications.
+        
+        @param listener The IDataMessageListener instance to set.
+        @return True if listener is set successfully, False otherwise.
+        """
+        if listener:
+            self.dataMsgListener = listener
+            return True
+        return False
     
     def startManager(self):
-        # NEW CODE: Start the scheduler
+        """
+        Starts the SystemPerformanceManager scheduler.
+        """
         logging.info("Starting SystemPerformanceManager...")
         
         if not self.scheduler.running:
@@ -75,7 +101,9 @@ class SystemPerformanceManager(object):
             logging.warning("SystemPerformanceManager scheduler already started. Ignoring.")
     
     def stopManager(self):
-        # NEW CODE: Stop the scheduler
+        """
+        Stops the SystemPerformanceManager scheduler.
+        """
         logging.info("Stopping SystemPerformanceManager...")
         
         try:
