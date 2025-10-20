@@ -16,6 +16,7 @@ from programmingtheiot.common.ResourceNameEnum import ResourceNameEnum
 from programmingtheiot.cda.system.ActuatorAdapterManager import ActuatorAdapterManager
 from programmingtheiot.cda.system.SensorAdapterManager import SensorAdapterManager
 from programmingtheiot.cda.system.SystemPerformanceManager import SystemPerformanceManager
+from programmingtheiot.cda.connection.MqttClientConnector import MqttClientConnector
 
 from programmingtheiot.data.ActuatorData import ActuatorData
 from programmingtheiot.data.SensorData import SensorData
@@ -45,7 +46,17 @@ class DeviceDataManager(IDataMessageListener):
         self.sensorAdapterMgr = None
         self.actuatorAdapterMgr = None
         
+        self.enableMqttClient = \
+            self.configUtil.getBoolean(
+                section=ConfigConst.CONSTRAINED_DEVICE,
+                key=ConfigConst.ENABLE_MQTT_CLIENT_KEY)
+        
         self.mqttClient = None
+        
+        if self.enableMqttClient:
+            self.mqttClient = MqttClientConnector()
+            self.mqttClient.setDataMessageListener(self)
+            logging.info("MQTT client enabled")
         self.coapClient = None
         self.coapServer = None
         
@@ -144,6 +155,10 @@ class DeviceDataManager(IDataMessageListener):
         if self.sensorAdapterMgr:
             self.sensorAdapterMgr.startManager()
         
+        if self.mqttClient:
+            self.mqttClient.connectClient()
+            logging.info("MQTT client connected")
+        
         logging.info("Started DeviceDataManager.")
     
     def stopManager(self):
@@ -157,6 +172,10 @@ class DeviceDataManager(IDataMessageListener):
         
         if self.sensorAdapterMgr:
             self.sensorAdapterMgr.stopManager()
+        
+        if self.mqttClient:
+            self.mqttClient.disconnectClient()
+            logging.info("MQTT client disconnected")
         
         logging.info("Stopped DeviceDataManager.")
     
