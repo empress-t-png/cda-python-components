@@ -39,28 +39,79 @@ class MqttClientConnector(IPubSubClient):
 		the same clientID continuously attempts to re-connect, causing the broker to
 		disconnect the previous instance.
 		"""
-		pass
+		self.config = ConfigUtil()
+		self.dataMsgListener = None
+		
+		self.host = self.config.getProperty(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.HOST_KEY, ConfigConst.DEFAULT_HOST)
+		self.port = self.config.getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.PORT_KEY, ConfigConst.DEFAULT_MQTT_PORT)
+		self.keepAlive = self.config.getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.KEEP_ALIVE_KEY, ConfigConst.DEFAULT_KEEP_ALIVE)
+		self.defaultQos = self.config.getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.DEFAULT_QOS_KEY, ConfigConst.DEFAULT_QOS)
+		
+		if not clientID:
+			self.clientID = ConfigConst.CONSTRAINED_DEVICE
+		else:
+			self.clientID = clientID
+		
+		logging.info('	MQTT Client ID:   ' + self.clientID)
+		logging.info('	MQTT Broker Host: ' + self.host)
+		logging.info('	MQTT Broker Port: ' + str(self.port))
+		logging.info('	MQTT Keep Alive:  ' + str(self.keepAlive))
+		
+		self.mqttClient = mqttClient.Client(client_id=self.clientID, clean_session=True)
+		self.mqttClient.on_connect = self.onConnect
+		self.mqttClient.on_disconnect = self.onDisconnect
+		self.mqttClient.on_message = self.onMessage
+		self.mqttClient.on_publish = self.onPublish
+		self.mqttClient.on_subscribe = self.onSubscribe
 
 	def connectClient(self) -> bool:
-		pass
+		if not self.mqttClient:
+			logging.warning("MQTT client not yet initialized.")
+			return False
+		
+		try:
+			logging.info("Connecting to MQTT broker at host: " + self.host + " port: " + str(self.port))
+			self.mqttClient.connect(self.host, self.port, self.keepAlive)
+			self.mqttClient.loop_start()
+			return True
+		except Exception as e:
+			logging.error("Failed to connect to MQTT broker: " + str(e))
+			return False
 		
 	def disconnectClient(self) -> bool:
-		pass
+		if not self.mqttClient:
+			logging.warning("MQTT client not yet initialized.")
+			return False
+		
+		try:
+			logging.info("Disconnecting from MQTT broker: " + self.host)
+			self.mqttClient.loop_stop()
+			self.mqttClient.disconnect()
+			return True
+		except Exception as e:
+			logging.error("Failed to disconnect from MQTT broker: " + str(e))
+			return False
 		
 	def onConnect(self, client, userdata, flags, rc):
-		pass
+		logging.info("[Callback] Connected to MQTT broker. Result code: " + str(rc))
 		
 	def onDisconnect(self, client, userdata, rc):
-		pass
+		logging.info("[Callback] Disconnected from MQTT broker. Result code: " + str(rc))
 		
 	def onMessage(self, client, userdata, msg):
-		pass
+		logging.info("[Callback] Message received on topic: " + msg.topic)
+		
+		if self.dataMsgListener:
+			try:
+				self.dataMsgListener.handleIncomingMessage(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, msg.payload.decode('utf-8'))
+			except Exception as e:
+				logging.error("Failed to handle incoming message: " + str(e))
 			
 	def onPublish(self, client, userdata, mid):
-		pass
+		logging.debug("[Callback] Message published. Message ID: " + str(mid))
 	
 	def onSubscribe(self, client, userdata, mid, granted_qos):
-		pass
+		logging.info("[Callback] Subscribed to topic. Message ID: " + str(mid) + " QoS: " + str(granted_qos))
 	
 	def onActuatorCommandMessage(self, client, userdata, msg):
 		"""
@@ -75,16 +126,84 @@ class MqttClientConnector(IPubSubClient):
 		@param userdata The user reference context.
 		@param msg The message context, including the embedded payload.
 		"""
-		pass
+		logging.info("[Callback] Actuator command message received on topic: " + msg.topic)
+		
+		if self.dataMsgListener:
+			try:
+				self.dataMsgListener.handleIncomingMessage(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, msg.payload.decode('utf-8'))
+			except Exception as e:
+				logging.error("Failed to handle actuator command message: " + str(e))
 	
 	def publishMessage(self, resource: ResourceNameEnum = None, msg: str = None, qos: int = ConfigConst.DEFAULT_QOS):
-		pass
+		if not self.mqttClient:
+			logging.warning("MQTT client not yet initialized.")
+			return False
+		
+		if not resource:
+			logging.warning("Resource is None. Unable to publish message.")
+			return False
+		
+		if qos < 0 or qos > 2:
+			qos = ConfigConst.DEFAULT_QOS
+		
+		topic = resource.value
+		
+		try:
+			logging.info("Publishing message to topic: " + topic)
+			msgInfo = self.mqttClient.publish(topic, msg, qos)
+			msgInfo.wait_for_publish()
+			return True
+		except Exception as e:
+			logging.error("Failed to publish message: " + str(e))
+			return False
 	
 	def subscribeToTopic(self, resource: ResourceNameEnum = None, callback = None, qos: int = ConfigConst.DEFAULT_QOS):
-		pass
+		if not self.mqttClient:
+			logging.warning("MQTT client not yet initialized.")
+			return False
+		
+		if not resource:
+			logging.warning("Resource is None. Unable to subscribe to topic.")
+			return False
+		
+		if qos < 0 or qos > 2:
+			qos = ConfigConst.DEFAULT_QOS
+		
+		topic = resource.value
+		
+		try:
+			logging.info("Subscribing to topic: " + topic)
+			
+			if callback:
+				self.mqttClient.message_callback_add(topic, callback)
+			
+			self.mqttClient.subscribe(topic, qos)
+			return True
+		except Exception as e:
+			logging.error("Failed to subscribe to topic: " + str(e))
+			return False
 	
 	def unsubscribeFromTopic(self, resource: ResourceNameEnum = None):
-		pass
+		if not self.mqttClient:
+			logging.warning("MQTT client not yet initialized.")
+			return False
+		
+		if not resource:
+			logging.warning("Resource is None. Unable to unsubscribe from topic.")
+			return False
+		
+		topic = resource.value
+		
+		try:
+			logging.info("Unsubscribing from topic: " + topic)
+			self.mqttClient.unsubscribe(topic)
+			return True
+		except Exception as e:
+			logging.error("Failed to unsubscribe from topic: " + str(e))
+			return False
 
 	def setDataMessageListener(self, listener: IDataMessageListener = None) -> bool:
-		pass
+		if listener:
+			self.dataMsgListener = listener
+			return True
+		return False
