@@ -60,7 +60,8 @@ class DeviceDataManager(IDataMessageListener):
             logging.info("Local sensor tracking enabled")
         
         if self.enableActuation:
-            self.actuatorAdapterMgr = ActuatorAdapterManager(dataMsgListener=self)
+            self.actuatorAdapterMgr = ActuatorAdapterManager()
+            self.actuatorAdapterMgr.setDataMessageListener(self)
             logging.info("Local actuation capabilities enabled")
         
         self.handleTempChangeOnDevice = \
