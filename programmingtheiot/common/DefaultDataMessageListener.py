@@ -1,11 +1,11 @@
 #####
-# 
+#
 # This class is part of the Programming the Internet of Things
 # project, and is available via the MIT License, which can be
 # found in the LICENSE file at the top level of this repository.
-# 
+#
 # Copyright (c) 2020 - 2025 by Andrew D. King
-# 
+#
 
 import logging
 
@@ -95,7 +95,7 @@ class DefaultDataMessageListener(IDataMessageListener):
 		@param msg The message received. It is expected to be in JSON format.
 		@return bool True on success; False otherwise.
 		"""
-		logging.info('Topic: %s  Message: %s', resourceEnum.value(), msg)
+		logging.info('Topic: %s  Message: %s', resourceEnum.value, msg)
 		return True
 
 	def handleSensorMessage(self, data: SensorData) -> bool:
@@ -148,4 +148,3 @@ class DefaultDataMessageListener(IDataMessageListener):
 		"""
 		if listener:
 			self.telemetryDataListeners[name] = listener
-			
