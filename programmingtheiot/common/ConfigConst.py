@@ -219,6 +219,17 @@ MQTT_GATEWAY_SERVICE  = MQTT    + '.' + GATEWAY_SERVICE
 OPCUA_GATEWAY_SERVICE = OPCUA   + '.' + GATEWAY_SERVICE
 SMTP_GATEWAY_SERVICE  = SMTP    + '.' + GATEWAY_SERVICE
 
+# CoAP client configuration
+COAP_CLIENT_SERVICE = COAP + '.' + CONSTRAINED_DEVICE + SERVICE
+ENABLE_COAP_KEY = 'enableCoap'
+
+# Resource paths (for string-based resources)
+TEMPERATURE_RESOURCE = 'temp'
+HUMIDITY_RESOURCE = 'humidity'
+PRESSURE_RESOURCE = 'pressure'
+SYSTEM_PERF_RESOURCE = 'systemperf'
+ACTUATOR_CMD_RESOURCE = 'actuatorcmd'
+
 CRED_SECTION = "Credentials"
 
 FROM_ADDRESS_KEY     = 'fromAddr'

@@ -32,6 +32,7 @@ port = 5683
 securePort = 5684
 enableAuth = False
 enableCrypt = False
+enableCoap = True
 
 #
 # CDA specific configuration information
@@ -42,7 +43,7 @@ enableEmulator = True
 enableSenseHAT = False
 enableMqttClient = True
 enableCoapServer = False
-enableCoapClient = False
+enableCoapClient = True
 enableSystemPerformance = False
 enableSensing = False
 enableLogging = True

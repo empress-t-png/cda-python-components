@@ -1,0 +1,339 @@
+[1mdiff --git a/tests/integration/connection/test_MqttClientConnector.py b/tests/integration/connection/test_MqttClientConnector.py[m
+[1mindex 5fc7368..a1e05ec 100644[m
+[1m--- a/tests/integration/connection/test_MqttClientConnector.py[m
+[1m+++ b/tests/integration/connection/test_MqttClientConnector.py[m
+[36m@@ -1,13 +1,5 @@[m
+[31m-#####[m
+[31m-# [m
+[31m-# This class is part of the Programming the Internet of Things[m
+[31m-# project, and is available via the MIT License, which can be[m
+[31m-# found in the LICENSE file at the top level of this repository.[m
+[31m-# [m
+[31m-# Copyright (c) 2020 - 2025 by Andrew D. King[m
+[31m-# [m
+[31m-[m
+ import logging[m
+[32m+[m
+ import unittest[m
+ [m
+ from time import sleep[m
+[36m@@ -15,169 +7,160 @@[m [mfrom time import sleep[m
+ import programmingtheiot.common.ConfigConst as ConfigConst[m
+ [m
+ from programmingtheiot.cda.connection.MqttClientConnector import MqttClientConnector[m
+[32m+[m
+ from programmingtheiot.common.ConfigUtil import ConfigUtil[m
+[32m+[m
+ from programmingtheiot.common.ResourceNameEnum import ResourceNameEnum[m
+[32m+[m
+ from programmingtheiot.common.DefaultDataMessageListener import DefaultDataMessageListener[m
+[32m+[m
+ from programmingtheiot.data.ActuatorData import ActuatorData[m
+[32m+[m
+ from programmingtheiot.data.SensorData import SensorData[m
+[31m-from programmingtheiot.data.DataUtil import DataUtil[m
+ [m
+[32m+[m[32mfrom programmingtheiot.data.DataUtil import DataUtil[m
+[32m+[m[41m [m
+ class MqttClientConnectorTest(unittest.TestCase):[m
+[31m-	"""[m
+[31m-	This test case class contains very basic unit tests for[m
+[31m-	MqttClientConnector. It should not be considered complete,[m
+[31m-	but serve as a starting point for the student implementing[m
+[31m-	additional functionality within their Programming the IoT[m
+[31m-	environment.[m
+[31m-	"""[m
+[31m-	[m
+[31m-	@classmethod[m
+[31m-	def setUpClass(self):[m
+[31m-		logging.basicConfig(format = '%(asctime)s:%(module)s:%(levelname)s:%(message)s', level = logging.DEBUG)[m
+[31m-		logging.info("Testing MqttClientConnector class...")[m
+[31m-		[m
+[31m-		self.cfg = ConfigUtil()[m
+[31m-		self.mcc = MqttClientConnector()[m
+[31m-		[m
+[31m-	def setUp(self):[m
+[31m-		pass[m
+[31m-[m
+[31m-	def tearDown(self):[m
+[31m-		pass[m
+[31m-[m
+[31m-	#@unittest.skip("Ignore for now.")[m
+[31m-	def testConnectAndDisconnect(self):[m
+[31m-		delay = self.cfg.getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.KEEP_ALIVE_KEY, ConfigConst.DEFAULT_KEEP_ALIVE)[m
+[31m-		[m
+[31m-		self.mcc.connectClient()[m
+[31m-		[m
+[31m-		sleep(delay + 5)[m
+[31m-		[m
+[31m-		self.mcc.disconnectClient()[m
+[31m-[m
+[31m-	#@unittest.skip("Ignore for now.")[m
+[31m-	def testConnectAndCDAManagementStatusPubSub(self):[m
+[31m-		qos = 1[m
+[31m-		delay = self.cfg.getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.KEEP_ALIVE_KEY, ConfigConst.DEFAULT_KEEP_ALIVE)[m
+[31m-		[m
+[31m-		self.mcc.connectClient()[m
+[31m-		self.mcc.subscribeToTopic(resource = ResourceNameEnum.CDA_MGMT_STATUS_MSG_RESOURCE, qos = qos)[m
+[31m-		sleep(5)[m
+[31m-		[m
+[31m-		self.mcc.publishMessage(resource = ResourceNameEnum.CDA_MGMT_STATUS_MSG_RESOURCE, msg = "TEST: This is the CDA message payload.", qos = qos)[m
+[31m-		sleep(5)[m
+[31m-		[m
+[31m-		self.mcc.unsubscribeFromTopic(resource = ResourceNameEnum.CDA_MGMT_STATUS_MSG_RESOURCE)[m
+[31m-		sleep(5)[m
+[31m-		[m
+[31m-		sleep(delay)[m
+[31m-		[m
+[31m-		self.mcc.disconnectClient()[m
+[31m-[m
+[31m-	@unittest.skip("Ignore for now.")[m
+[31m-	def testNewActuatorCmdPubSub(self):[m
+[31m-		qos = 1[m
+[31m-	[m
+[31m-		# NOTE: delay can be anything you'd like - the sleep() calls are simply to slow things down a bit for observation[m
+[31m-		delay = self.cfg.getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.KEEP_ALIVE_KEY, ConfigConst.DEFAULT_KEEP_ALIVE)[m
+[31m-		[m
+[31m-		actuatorData = ActuatorData()[m
+[31m-		payload = DataUtil().actuatorDataToJson(actuatorData)[m
+[31m-		[m
+[31m-		self.mcc.setDataMessageListener(DefaultDataMessageListener())[m
+[31m-		self.mcc.connectClient()[m
+[31m-		[m
+[31m-		sleep(5)[m
+[31m-		[m
+[31m-		self.mcc.publishMessage(resource = ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, msg = payload, qos = qos)[m
+[31m-		[m
+[31m-		sleep(delay)[m
+[31m-		[m
+[31m-		self.mcc.disconnectClient()[m
+[31m-		[m
+[31m-	#@unittest.skip("Ignore for now.")[m
+[31m-	def testActuatorCmdPubSub(self):[m
+[31m-		qos = 0[m
+[31m-		delay = self.cfg.getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.KEEP_ALIVE_KEY, ConfigConst.DEFAULT_KEEP_ALIVE)[m
+[31m-		[m
+[31m-		actuatorData = ActuatorData()[m
+[31m-		actuatorData.setCommand(7)[m
+[31m-		[m
+[31m-		self.mcc.setDataMessageListener(DefaultDataMessageListener())[m
+[31m-		[m
+[31m-		payload = DataUtil().actuatorDataToJson(actuatorData)[m
+[31m-		[m
+[31m-		self.mcc.connectClient()[m
+[31m-		[m
+[31m-		sleep(5)[m
+[31m-				[m
+[31m-		self.mcc.publishMessage(resource = ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, msg = payload, qos = qos)[m
+[31m-		[m
+[31m-		sleep(delay + 5)[m
+[31m-		[m
+[31m-		self.mcc.disconnectClient()[m
+[31m-[m
+[31m-	@unittest.skip("Ignore for now.")[m
+[31m-	def testSensorMsgPub(self):[m
+[31m-		qos = 0[m
+[31m-		delay = self.cfg.getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.KEEP_ALIVE_KEY, ConfigConst.DEFAULT_KEEP_ALIVE)[m
+[31m-		[m
+[31m-		sensorData = SensorData()[m
+[31m-		sensorData.setValue(22.0)[m
+[31m-		[m
+[31m-		self.mcc.setDataMessageListener(DefaultDataMessageListener())[m
+[31m-		[m
+[31m-		payload = DataUtil().sensorDataToJson(sensorData)[m
+[31m-		[m
+[31m-		self.mcc.connectClient()[m
+[31m-		[m
+[31m-		sleep(5)[m
+[31m-				[m
+[31m-		self.mcc.publishMessage(resource = ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, msg = payload, qos = qos)[m
+[31m-		[m
+[31m-		sleep(delay + 5)[m
+[31m-		[m
+[31m-		self.mcc.disconnectClient()[m
+[31m-[m
+[31m-	@unittest.skip("Ignore for now.")[m
+[31m-	def testCDAManagementStatusSubscribe(self):[m
+[31m-		qos = 1[m
+[31m-		delay = self.cfg.getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.KEEP_ALIVE_KEY, ConfigConst.DEFAULT_KEEP_ALIVE)[m
+[31m-		[m
+[31m-		self.mcc.connectClient()[m
+[31m-		self.mcc.subscribeToTopic(resource = ResourceNameEnum.CDA_MGMT_STATUS_CMD_RESOURCE, qos = qos)[m
+[31m-		[m
+[31m-		sleep(delay)[m
+[31m-		[m
+[31m-		self.mcc.disconnectClient()[m
+[31m-[m
+[31m-	@unittest.skip("Ignore for now.")[m
+[31m-	def testCDAActuatorCmdSubscribe(self):[m
+[31m-		qos = 1[m
+[31m-		delay = self.cfg.getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.KEEP_ALIVE_KEY, ConfigConst.DEFAULT_KEEP_ALIVE)[m
+[31m-		[m
+[31m-		self.mcc.connectClient()[m
+[31m-		self.mcc.subscribeToTopic(resource = ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, qos = qos)[m
+[31m-		[m
+[31m-		sleep(300)[m
+[31m-		[m
+[31m-		self.mcc.disconnectClient()[m
+[31m-[m
+[31m-	@unittest.skip("Ignore for now.")[m
+[31m-	def testCDAManagementStatusPublish(self):[m
+[31m-		"""[m
+[31m-		Uncomment this test when integration between the GDA and CDA using MQTT.[m
+[31m-		[m
+[31m-		"""[m
+[31m-		qos = 1[m
+[31m-		delay = self.cfg.getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.KEEP_ALIVE_KEY, ConfigConst.DEFAULT_KEEP_ALIVE)[m
+[31m-		[m
+[31m-		self.mcc.connectClient()[m
+[31m-		self.mcc.publishMessage(resource = ResourceNameEnum.CDA_MGMT_STATUS_MSG_RESOURCE, msg = "TEST: This is the CDA message payload.", qos = qos)[m
+[31m-		[m
+[31m-		sleep(delay)[m
+[31m-		[m
+[31m-		self.mcc.disconnectClient()[m
+ [m
+[32m+[m[32m    @classmethod[m
+[32m+[m
+[32m+[m[32m    def setUpClass(self):[m
+[32m+[m
+[32m+[m[32m        logging.basicConfig([m
+[32m+[m
+[32m+[m[32m            format='%(asctime)s:%(module)s:%(levelname)s:%(message)s',[m
+[32m+[m
+[32m+[m[32m            level=logging.DEBUG[m
+[32m+[m
+[32m+[m[32m        )[m
+[32m+[m
+[32m+[m[32m        logging.info("Testing MqttClientConnector class...")[m
+[32m+[m
+[32m+[m[32m        self.cfg = ConfigUtil()[m
+[32m+[m
+[32m+[m[32m        self.mcc = MqttClientConnector()[m
+[32m+[m
+[32m+[m[32m    def setUp(self):[m
+[32m+[m
+[32m+[m[32m        pass[m
+[32m+[m
+[32m+[m[32m    def tearDown(self):[m
+[32m+[m
+[32m+[m[32m        pass[m
+[32m+[m
+[32m+[m[32m    # Test enabled - skip annotation commented out[m
+[32m+[m
+[32m+[m[32m    @unittest.skip("Ignore for now.")[m
+[32m+[m
+[32m+[m[32m    def testConnectAndDisconnect(self):[m
+[32m+[m
+[32m+[m[32m        delay = self.cfg.getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.KEEP_ALIVE_KEY, ConfigConst.DEFAULT_KEEP_ALIVE)[m
+[32m+[m
+[32m+[m[32m        self.mcc.connectClient()[m
+[32m+[m
+[32m+[m[32m        sleep(delay + 5)[m
+[32m+[m
+[32m+[m[32m        self.mcc.disconnectClient()[m
+[32m+[m
+[32m+[m[32m    # All other tests skipped[m
+[32m+[m
+[32m+[m[32m    @unittest.skip("Ignore for now.")[m
+[32m+[m
+[32m+[m[32m    def testConnectAndCDAManagementStatusPubSub(self):[m
+[32m+[m
+[32m+[m[32m        qos = 1[m
+[32m+[m
+[32m+[m[32m        delay = self.cfg.getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.KEEP_ALIVE_KEY, ConfigConst.DEFAULT_KEEP_ALIVE)[m
+[32m+[m
+[32m+[m[32m        self.mcc.setDataMessageListener(DefaultDataMessageListener())[m
+[32m+[m
+[32m+[m[32m        self.mcc.connectClient()[m
+[32m+[m
+[32m+[m[32m        self.mcc.subscribeToTopic(resource=ResourceNameEnum.CDA_MGMT_STATUS_MSG_RESOURCE, qos=qos)[m
+[32m+[m
+[32m+[m[32m        sleep(5)[m
+[32m+[m
+[32m+[m[32m        self.mcc.publishMessage(resource=ResourceNameEnum.CDA_MGMT_STATUS_MSG_RESOURCE, msg="TEST: This is the CDA message payload.", qos=qos)[m
+[32m+[m
+[32m+[m[32m        sleep(5)[m
+[32m+[m
+[32m+[m[32m        self.mcc.unsubscribeFromTopic(resource=ResourceNameEnum.CDA_MGMT_STATUS_MSG_RESOURCE)[m
+[32m+[m
+[32m+[m[32m        sleep(5)[m
+[32m+[m
+[32m+[m[32m        sleep(delay)[m
+[32m+[m
+[32m+[m[32m        self.mcc.disconnectClient()[m
+[32m+[m
+[32m+[m[32m    @unittest.skip("Ignore for now.")[m
+[32m+[m
+[32m+[m[32m    def testActuatorCmdPubSub(self):[m
+[32m+[m
+[32m+[m[32m        qos = 0[m
+[32m+[m
+[32m+[m[32m        delay = self.cfg.getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.KEEP_ALIVE_KEY, ConfigConst.DEFAULT_KEEP_ALIVE)[m
+[32m+[m
+[32m+[m[32m        actuatorData = ActuatorData()[m
+[32m+[m
+[32m+[m[32m        actuatorData.setCommand(7)[m
+[32m+[m
+[32m+[m[32m        self.mcc.setDataMessageListener(DefaultDataMessageListener())[m
+[32m+[m
+[32m+[m[32m        payload = DataUtil().actuatorDataToJson(actuatorData)[m
+[32m+[m
+[32m+[m[32m        self.mcc.connectClient()[m
+[32m+[m
+[32m+[m[32m        sleep(5)[m
+[32m+[m
+[32m+[m[32m        self.mcc.publishMessage(resource=ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, msg=payload, qos=qos)[m
+[32m+[m
+[32m+[m[32m        sleep(delay + 5)[m
+[32m+[m
+[32m+[m[32m        self.mcc.disconnectClient()[m
+[32m+[m
+[32m+[m[32m    @unittest.skip("Ignore for now.")[m
+[32m+[m
+[32m+[m[32m    def testSensorMsgPub(self):[m
+[32m+[m
+[32m+[m[32m        qos = 0[m
+[32m+[m
+[32m+[m[32m        delay = self.cfg.getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.KEEP_ALIVE_KEY, ConfigConst.DEFAULT_KEEP_ALIVE)[m
+[32m+[m
+[32m+[m[32m        sensorData = SensorData()[m
+[32m+[m
+[32m+[m[32m        sensorData.setValue(22.0)[m
+[32m+[m
+[32m+[m[32m        self.mcc.setDataMessageListener(DefaultDataMessageListener())[m
+[32m+[m
+[32m+[m[32m        payload = DataUtil().sensorDataToJson(sensorData)[m
+[32m+[m
+[32m+[m[32m        self.mcc.connectClient()[m
+[32m+[m
+[32m+[m[32m        sleep(5)[m
+[32m+[m
+[32m+[m[32m        self.mcc.publishMessage(resource=ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, msg=payload, qos=qos)[m
+[32m+[m
+[32m+[m[32m        sleep(delay + 5)[m
+[32m+[m
+[32m+[m[32m        self.mcc.disconnectClient()[m
+[32m+[m
+[32m+[m[32m    #@unittest.skip("Ignore for now.")[m
+[32m+[m
+[32m+[m[32m    def testCDAManagementStatusPublish(self):[m
+[32m+[m
+[32m+[m[32m        qos = 1[m
+[32m+[m
+[32m+[m[32m        delay = self.cfg.getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.KEEP_ALIVE_KEY, ConfigConst.DEFAULT_KEEP_ALIVE)[m
+[32m+[m
+[32m+[m[32m        self.mcc.connectClient()[m
+[32m+[m
+[32m+[m[32m        self.mcc.publishMessage(resource=ResourceNameEnum.CDA_MGMT_STATUS_MSG_RESOURCE, msg="TEST: This is the CDA message payload.", qos=qos)[m
+[32m+[m
+[32m+[m[32m        sleep(delay)[m
+[32m+[m
+[32m+[m[32m        self.mcc.disconnectClient()[m
+[32m+[m[41m [m
+ if __name__ == "__main__":[m
+[31m-	unittest.main()[m
+\ No newline at end of file[m
+[32m+[m
+[32m+[m[32m    unittest.main()[m
+[41m+ [m
+\ No newline at end of file[m

@@ -17,6 +17,7 @@ from programmingtheiot.cda.system.ActuatorAdapterManager import ActuatorAdapterM
 from programmingtheiot.cda.system.SensorAdapterManager import SensorAdapterManager
 from programmingtheiot.cda.system.SystemPerformanceManager import SystemPerformanceManager
 from programmingtheiot.cda.connection.MqttClientConnector import MqttClientConnector
+from programmingtheiot.cda.connection.MqttClientConnector import MqttClientConnector
 from programmingtheiot.cda.connection.CoapClientConnector import CoapClientConnector
 from programmingtheiot.data.ActuatorData import ActuatorData
 from programmingtheiot.data.SensorData import SensorData
@@ -40,8 +41,7 @@ class DeviceDataManager(IDataMessageListener):
                 section=ConfigConst.CONSTRAINED_DEVICE, 
                 key=ConfigConst.ENABLE_SENSING_KEY)
         
-        # Temporarily disable actuation to avoid emulator issues
-        self.enableActuation = False
+        self.enableActuation = True
         
         self.sysPerfMgr = None
         self.sensorAdapterMgr = None
@@ -58,22 +58,8 @@ class DeviceDataManager(IDataMessageListener):
             self.mqttClient = MqttClientConnector()
             self.mqttClient.setDataMessageListener(self)
             logging.info("MQTT client enabled")
-        
-        # CoAP client configuration
-        self.enableCoapClient = self.configUtil.getBoolean(
-            ConfigConst.COAP_GATEWAY_SERVICE,
-            ConfigConst.ENABLE_COAP_KEY,
-            False
-        )
-
         self.coapClient = None
-
-        if self.enableCoapClient:
-            try:
-                self.coapClient = CoapClientConnector()
-                logging.info("CoAP client connector created")
-            except Exception as e:
-                logging.error(f"Failed to create CoAP client: {e}")
+        self.coapServer = None
         
         if self.enableSystemPerf:
             self.sysPerfMgr = SystemPerformanceManager()
@@ -86,13 +72,8 @@ class DeviceDataManager(IDataMessageListener):
             logging.info("Local sensor tracking enabled")
         
         if self.enableActuation:
-            try:
-                self.actuatorAdapterMgr = ActuatorAdapterManager()
-                self.actuatorAdapterMgr.setDataMessageListener(self)
-                logging.info("Local actuation capabilities enabled")
-            except Exception as e:
-                logging.error(f"Failed to initialize actuator manager: {e}")
-                self.actuatorAdapterMgr = None
+            self.actuatorAdapterMgr = ActuatorAdapterManager(dataMsgListener=self)
+            logging.info("Local actuation capabilities enabled")
         
         self.handleTempChangeOnDevice = \
             self.configUtil.getBoolean(
@@ -109,32 +90,6 @@ class DeviceDataManager(IDataMessageListener):
                 ConfigConst.CONSTRAINED_DEVICE, 
                 ConfigConst.TRIGGER_HVAC_TEMP_CEILING_KEY)
     
-    def _sendCoapRequest(self, resource: str, data: str = None) -> bool:
-        """
-        Send data via CoAP to the gateway device
-        """
-        if not self.coapClient:
-            logging.warning("CoAP client not enabled or initialized")
-            return False
-        
-        try:
-            import asyncio
-            from aiocoap import Code
-            success = asyncio.run(
-                self.coapClient.sendRequest(resource, data, Code.POST)
-            )
-            
-            if success:
-                logging.debug(f"CoAP request successful for resource: {resource}")
-            else:
-                logging.warning(f"CoAP request failed for resource: {resource}")
-                
-            return success
-            
-        except Exception as e:
-            logging.error(f"CoAP transmission error for {resource}: {e}")
-            return False
-    
     def handleActuatorCommandMessage(self, data: ActuatorData = None) -> ActuatorData:
         """
         Handle actuator command message.
@@ -143,11 +98,7 @@ class DeviceDataManager(IDataMessageListener):
         
         if data:
             logging.info("Processing actuator command message.")
-            if self.actuatorAdapterMgr:
-                return self.actuatorAdapterMgr.sendActuatorCommand(data)
-            else:
-                logging.warning("Actuator manager not available")
-                return None
+            return self.actuatorAdapterMgr.sendActuatorCommand(data)
         else:
             logging.warning("Incoming actuator command is invalid (null). Ignoring.")
             return None
@@ -176,25 +127,6 @@ class DeviceDataManager(IDataMessageListener):
         """
         if data:
             logging.debug("Incoming sensor data received (from sensor manager): " + str(data))
-            
-            # Send sensor data via CoAP if enabled
-            if self.enableCoapClient and self.coapClient:
-                json_data = data.toJson()
-                resource_name = ""
-                
-                # Determine resource based on sensor type
-                if hasattr(data, 'typeID'):
-                    if data.typeID == ConfigConst.TEMP_SENSOR_TYPE:
-                        resource_name = ConfigConst.TEMPERATURE_RESOURCE
-                    elif data.typeID == ConfigConst.HUMIDITY_SENSOR_TYPE:
-                        resource_name = ConfigConst.HUMIDITY_RESOURCE
-                    elif data.typeID == ConfigConst.PRESSURE_SENSOR_TYPE:
-                        resource_name = ConfigConst.PRESSURE_RESOURCE
-                
-                if resource_name:
-                    logging.debug(f"Upstream CoAP transmission: {resource_name}")
-                    self._sendCoapRequest(resource_name, json_data)
-            
             self._handleSensorDataAnalysis(data=data)
             return True
         else:
@@ -207,13 +139,6 @@ class DeviceDataManager(IDataMessageListener):
         """
         if data:
             logging.debug("Incoming system performance message received (from sys perf manager): " + str(data))
-            
-            # Send system performance data via CoAP if enabled
-            if self.enableCoapClient and self.coapClient:
-                json_data = data.toJson()
-                logging.debug("Upstream CoAP transmission: systemperf")
-                self._sendCoapRequest(ConfigConst.SYSTEM_PERF_RESOURCE, json_data)
-            
             return True
         else:
             logging.warning("Incoming system performance data is invalid (null). Ignoring.")
@@ -234,8 +159,8 @@ class DeviceDataManager(IDataMessageListener):
         if self.mqttClient:
             self.mqttClient.connectClient()
             logging.info("MQTT client connected")
-        
-        if self.coapClient:
+
+if self.coapClient:
             # CoAP client is connectionless, just log that it's ready
             logging.info("CoAP client ready for requests")
         
@@ -256,13 +181,6 @@ class DeviceDataManager(IDataMessageListener):
         if self.mqttClient:
             self.mqttClient.disconnectClient()
             logging.info("MQTT client disconnected")
-        
-        if self.coapClient:
-            try:
-                self.coapClient.disconnectClient()
-                logging.info("CoAP client disconnected")
-            except Exception as e:
-                logging.error(f"Error disconnecting CoAP client: {e}")
         
         logging.info("Stopped DeviceDataManager.")
     
