@@ -1,218 +1,258 @@
 """
-Simplified CoAP client connector for DeviceDataManager compatibility
+This module provides CoAP client connectivity using the CoAPthon3 library.
+
 """
 
 import logging
+
 from coapthon.client.helperclient import HelperClient
-from coapthon import defines
-from coapthon.utils import generate_random_token
+
 import programmingtheiot.common.ConfigConst as ConfigConst
 from programmingtheiot.common.ConfigUtil import ConfigUtil
 from programmingtheiot.common.ResourceNameEnum import ResourceNameEnum
+from programmingtheiot.common.IDataMessageListener import IDataMessageListener
+from programmingtheiot.data.DataUtil import DataUtil
+from programmingtheiot.cda.connection.IRequestResponseClient import IRequestResponseClient
 
-class CoapClientConnector:
+class HandleActuatorEvent:
     """
-    Simplified CoAP client for basic functionality
+    Handler class for actuator event responses from observed resources.
+    """
+    
+    def __init__(self, 
+            listener: IDataMessageListener = None, 
+            resource: ResourceNameEnum = ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE,
+            requests = None):
+        
+        self.listener = listener
+        self.resource = resource
+        self.observeRequests = requests
+        
+        if not self.resource:
+            self.resource = ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE
+            
+    def handleActuatorResponse(self, response):
+        """
+        Handle actuator response from observed resource.
+        
+        Args:
+            response: The CoAP response containing actuator data
+        """
+        if response:
+            jsonData = response.payload
+            
+            if self.observeRequests is not None:
+                self.observeRequests[self.resource] = response
+            
+            logging.info(f"Received actuator command response to resource {self.resource}: {jsonData}")
+            
+            if self.listener:
+                try:
+                    data = DataUtil().jsonToActuatorData(jsonData = jsonData)
+                    self.listener.handleActuatorCommandMessage(data = data)
+
+                except Exception as e:
+                    logging.warning(f"Failed to decode actuator data. Ignoring: {jsonData}")
+                    logging.debug(f"Error details: {e}")
+
+
+class CoapClientConnector(IRequestResponseClient):
+    """
+    CoAP client implementation using CoAPthon3 library.
+    
     """
     
     def __init__(self):
+        """
+        Constructor.
+        
+        """
         self.config = ConfigUtil()
-        self.host = self.config.getProperty(
-            ConfigConst.COAP_GATEWAY_SERVICE, 
-            ConfigConst.HOST_KEY, 
-            ConfigConst.DEFAULT_HOST
-        )
-        self.port = self.config.getInteger(
-            ConfigConst.COAP_GATEWAY_SERVICE, 
-            ConfigConst.PORT_KEY, 
-            ConfigConst.DEFAULT_COAP_PORT
-        )
-        logging.info(f"CoAP Client configured for {self.host}:{self.port}")
+        self.dataMsgListener = None
+        
+        self.host = self.config.getProperty(ConfigConst.COAP_GATEWAY_SERVICE, ConfigConst.HOST_KEY, ConfigConst.DEFAULT_HOST)
+        self.port = self.config.getInteger(ConfigConst.COAP_GATEWAY_SERVICE, ConfigConst.PORT_KEY, ConfigConst.DEFAULT_COAP_PORT)
+        
+        self.url = "coap://" + self.host + ":" + str(self.port) + "/"
+        
+        logging.info("CoAP client configured for host: %s, port: %d" % (self.host, self.port))
+        
+        self._initClient()
     
-    def sendRequest(self, resource: str, payload: str = None, method: str = "POST") -> bool:
+    def sendDiscoveryRequest(self, timeout: int = IRequestResponseClient.DEFAULT_TIMEOUT) -> bool:
         """
-        Send CoAP request - simplified version
+        Sends a discovery request to the CoAP server.
+        
         """
-        try:
-            logging.info(f"Sending CoAP {method} to {resource} with payload: {payload}")
-            
-            client = HelperClient(server=(self.host, self.port))
-            
-            if method.upper() == "POST":
-                response = client.post(resource, payload)
-            elif method.upper() == "GET":
-                response = client.get(resource)
-            elif method.upper() == "PUT":
-                response = client.put(resource, payload)
-            elif method.upper() == "DELETE":
-                response = client.delete(resource)
-            else:
-                logging.warning(f"Unsupported CoAP method: {method}")
-                client.stop()
-                return False
-            
-            if response:
-                logging.info(f"CoAP Response: {response.pretty_print()}")
-                client.stop()
-                return True
-            else:
-                logging.warning("No CoAP response received")
-                client.stop()
-                return False
-                
-        except Exception as e:
-            logging.error(f"CoAP request failed: {e}")
-            return False
-
-    def sendPutRequest(self, resource: ResourceNameEnum = None, name: str = None, 
-                      enableCON: bool = False, payload: str = None, 
-                      timeout: int = 5) -> bool:
-        """
-        Send PUT request to CoAP server
-        """
-        if not resource:
-            logging.warning("No resource specified for PUT request.")
-            return False
+        logging.info("Discovering remote resources at URL: %s" % self.url)
         
         try:
-            # Get resource path from ResourceNameEnum
-            resource_path = resource.value
-            
-            # If name is provided, append it to the resource path
-            if name:
-                resource_path = f"{resource_path}/{name}"
-            
-            logging.info(f"Issuing PUT with path: {resource_path}")
-            
             client = HelperClient(server=(self.host, self.port))
-            
-            # Send PUT request
-            response = client.put(resource_path, payload, timeout=timeout)
+            response = client.discover()
             
             if response:
-                logging.info(f"PUT Response: {response.pretty_print()}")
-                client.stop()
+                logging.info("Discovery response: %s" % response.pretty_print())
                 return True
             else:
-                logging.warning("No PUT response received")
-                client.stop()
+                logging.warning("No discovery response received.")
                 return False
                 
         except Exception as e:
-            logging.error(f"PUT request failed: {e}")
+            logging.warning("Failed to discover resources: %s" % str(e))
             return False
-
-    def sendPostRequest(self, resource: ResourceNameEnum = None, name: str = None, 
-                       enableCON: bool = False, payload: str = None, 
-                       timeout: int = 5) -> bool:
+    
+    def sendDeleteRequest(self, resource: ResourceNameEnum = None, name: str = None, enableCON: bool = False, timeout: int = IRequestResponseClient.DEFAULT_TIMEOUT) -> bool:
         """
-        Send POST request to CoAP server with CONFIRMABLE/NONCONFIRMABLE support
-        """
-        if not resource:
-            logging.warning("No resource specified for POST request.")
-            return False
+        Sends a DELETE request to the CoAP server.
         
-        try:
-            # Get resource path from ResourceNameEnum
-            resource_path = resource.value
-            
-            # If name is provided, append it to the resource path
-            if name:
-                resource_path = f"{resource_path}/{name}"
-            
-            logging.info(f"Issuing POST with path: {resource_path}")
-            logging.info(f"Sending POST with payload: {payload}")
-            
-            # Create client and send POST request
-            client = HelperClient(server=(self.host, self.port))
-            
-            # Note: HelperClient doesn't directly expose CON/NON configuration in simple API
-            response = client.post(resource_path, payload, timeout=timeout)
-            
-            if response:
-                logging.info(f"POST Response: {response.pretty_print()}")
-                client.stop()
-                return True
-            else:
-                logging.warning("No POST response received")
-                client.stop()
-                return False
-                
-        except Exception as e:
-            logging.error(f"POST request failed: {e}")
-            return False
-
-    def sendDeleteRequest(self, resource: ResourceNameEnum = None, name: str = None, 
-                         enableCON: bool = False, timeout: int = 5) -> bool:
         """
-        Send DELETE request to CoAP server with CONFIRMABLE/NONCONFIRMABLE support
+        logging.info("DELETE functionality not yet implemented.")
+        return False
+    
+    def sendGetRequest(self, resource: ResourceNameEnum = None, name: str = None, enableCON: bool = False, timeout: int = IRequestResponseClient.DEFAULT_TIMEOUT) -> bool:
+        """
+        Sends a GET request to the CoAP server.
+        
+        """
+        logging.info("GET functionality not yet implemented.")
+        return False
+    
+    def sendPostRequest(self, resource: ResourceNameEnum = None, name: str = None, enableCON: bool = False, payload: str = None, timeout: int = IRequestResponseClient.DEFAULT_TIMEOUT) -> bool:
+        """
+        Sends a POST request to the CoAP server.
+        
+        """
+        logging.info("POST functionality not yet implemented.")
+        return False
+    
+    def sendPutRequest(self, resource: ResourceNameEnum = None, name: str = None, enableCON: bool = False, payload: str = None, timeout: int = IRequestResponseClient.DEFAULT_TIMEOUT) -> bool:
+        """
+        Sends a PUT request to the CoAP server.
+        
+        """
+        logging.info("PUT functionality not yet implemented.")
+        return False
+    
+    def setDataMessageListener(self, listener: IDataMessageListener = None) -> bool:
+        """
+        Sets the data message listener instance.
+        
+        """
+        if listener:
+            self.dataMsgListener = listener
+            return True
+        
+        return False
+    
+    def startObserver(self, resource: ResourceNameEnum = None, name: str = None, ttl: int = IRequestResponseClient.DEFAULT_TTL) -> bool:
+        """
+        Starts observing a resource on the CoAP server.
         
         Args:
-            resource: ResourceNameEnum for the request URL
-            name: Additional path detail for the URL
-            enableCON: True for CONFIRMABLE, False for NONCONFIRMABLE
-            timeout: Request timeout in seconds
+            resource: The resource to observe
+            name: Additional name for the resource path
+            ttl: Time to live for the observation
             
         Returns:
-            True if request was sent successfully
+            bool: True if observation started successfully, False otherwise
         """
-        if not resource:
-            logging.warning("No resource specified for DELETE request.")
+        if resource or name:
+            if resource in self.observeRequests:
+                logging.warning(f"Already observing resource {resource}. Ignoring start observe request.")
+                return False
+            
+            self.observeRequests[resource] = None
+            
+            resourcePath = self._createResourcePath(resource, name)
+            
+            observeActuatorCmdHandler = \
+                HandleActuatorEvent( \
+                    listener = self.dataMsgListener, resource = resource, requests = self.observeRequests)
+            
+            try:
+                self.coapClient.observe(path = resourcePath, callback = observeActuatorCmdHandler.handleActuatorResponse)
+                logging.info(f"Started observing resource: {resourcePath}")
+                return True
+                
+            except Exception as e:
+                logging.warning(f"Failed to observe path: {resourcePath}. Error: {e}")
+                return False
+        else:
+            logging.warning("Can't start observation - no resource provided.")
             return False
+    
+    def stopObserver(self, resource: ResourceNameEnum = None, name: str = None, timeout: int = IRequestResponseClient.DEFAULT_TIMEOUT) -> bool:
+        """
+        Stops observing a resource on the CoAP server.
         
-        try:
-            # Get resource path from ResourceNameEnum
-            resource_path = resource.value
+        Args:
+            resource: The resource to stop observing
+            name: Additional name for the resource path
+            timeout: Timeout for the stop operation
             
-            # If name is provided, append it to the resource path
-            if name:
-                resource_path = f"{resource_path}/{name}"
+        Returns:
+            bool: True if observation stopped successfully, False otherwise
+        """
+        if resource or name:
+            if not resource in self.observeRequests:
+                logging.warning(f"Resource {resource} not being observed. Ignoring stop observe request.")
+                return False
             
-            logging.info(f"Issuing DELETE with path: {resource_path}")
-            
-            # Create client and send DELETE request
-            client = HelperClient(server=(self.host, self.port))
-            
-            # Note: HelperClient doesn't directly expose CON/NON configuration in simple API
-            response = client.delete(resource_path, timeout=timeout)
+            response = self.observeRequests[resource]
             
             if response:
-                logging.info(f"DELETE Response: {response.pretty_print()}")
-                client.stop()
-                return True
-            else:
-                logging.warning("No DELETE response received")
-                client.stop()
-                return False
+                logging.info(f"Cancelling observe for resource {resource}.")
                 
-        except Exception as e:
-            logging.error(f"DELETE request failed: {e}")
+                try:
+                    self.coapClient.cancel_observing(response = response, send_rst = True)
+                    
+                    del self.observeRequests[resource]
+                    
+                    logging.info(f"Cancelled observe for resource {resource}.")
+                    return True
+
+                except Exception as e:
+                    logging.warning(f"Failed to cancel observe for resource {resource}. Error: {e}")
+                    return False
+            else:
+                logging.warning(f"No response yet for observed resource {resource}. Attempting to stop anyway.")
+                
+                try:
+                    self.coapClient.cancel_observing(response = None, send_rst = True)
+                    
+                    if resource in self.observeRequests:
+                        del self.observeRequests[resource]
+                        
+                    logging.info(f"Canceled observe for resource {resource}.")
+                    return True
+
+                except Exception as e:
+                    logging.warning(f"Failed to cancel observe for resource {resource}. Error: {e}")
+                    return False
+        else:
+            logging.warning("Can't stop observation - no resource provided.")
             return False
-
-    def _onPostResponse(self, response):
+    
+    def _initClient(self):
         """
-        Internal callback method for handling POST responses
-        """
-        if not response:
-            logging.warning("POST response invalid. Ignoring.")
-            return
+        Initializes the CoAP client.
         
-        # Process the response
-        logging.info(f"POST response received: {response.pretty_print() if response else 'None'}")
-
-    def _onDeleteResponse(self, response):
         """
-        Internal callback method for handling DELETE responses
+        self.coapClient = HelperClient(server=(self.host, self.port))
+        self.observeRequests = {}
+        logging.info("CoAP client initialized for URL: %s" % self.url)
+    
+    def _createResourcePath(self, resource: ResourceNameEnum, name: str = None) -> str:
         """
-        if not response:
-            logging.warning("DELETE response invalid. Ignoring.")
-            return
+        Creates a resource path from the given resource and name.
         
-        # Process the response
-        logging.info(f"DELETE response received: {response.pretty_print() if response else 'None'}")
-
-    def disconnectClient(self):
         """
-        Cleanup client resources
-        """
-        logging.info("CoAP client disconnected")
+        if not resource:
+            return ""
+        
+        resourcePath = resource.value
+        
+        if name:
+            resourcePath = resourcePath + "/" + name
+            
+        return resourcePath
