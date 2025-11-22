@@ -39,13 +39,13 @@ enableCoap = True
 #
 [ConstrainedDevice]
 deviceLocationID = constraineddevice001
-enableEmulator = True
+enableEmulator = False
 enableSenseHAT = False
 enableMqttClient = True
 enableCoapServer = False
 enableCoapClient = True
-enableSystemPerformance = False
-enableSensing = False
+enableSystemPerformance = True
+enableSensing = True
 enableLogging = True
 pollCycleSecs = 5
 testGdaDataPath = /tmp/gda-data
