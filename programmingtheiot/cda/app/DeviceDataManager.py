@@ -21,6 +21,7 @@ from programmingtheiot.cda.connection.CoapClientConnector import CoapClientConne
 from programmingtheiot.data.ActuatorData import ActuatorData
 from programmingtheiot.data.SensorData import SensorData
 from programmingtheiot.data.SystemPerformanceData import SystemPerformanceData
+from programmingtheiot.data.DataUtil import DataUtil
 
 class DeviceDataManager(IDataMessageListener):
     """
@@ -29,6 +30,7 @@ class DeviceDataManager(IDataMessageListener):
     
     def __init__(self):
         self.configUtil = ConfigUtil()
+        self.dataUtil = DataUtil()
         
         self.enableSystemPerf = \
             self.configUtil.getBoolean(
@@ -108,6 +110,11 @@ class DeviceDataManager(IDataMessageListener):
             self.configUtil.getFloat(
                 ConfigConst.CONSTRAINED_DEVICE, 
                 ConfigConst.TRIGGER_HVAC_TEMP_CEILING_KEY)
+        
+        # Track previous temperature state for threshold crossing detection
+        self.lastKnownTemp = None
+        self.isHeatingActive = False
+        self.isCoolingActive = False
     
     def _sendCoapRequest(self, resource: str, data: str = None) -> bool:
         """
@@ -179,7 +186,7 @@ class DeviceDataManager(IDataMessageListener):
             
             # Send sensor data via CoAP if enabled
             if self.enableCoapClient and self.coapClient:
-                json_data = data.toJson()
+                json_data = self.dataUtil.sensorDataToJson(data)
                 resource_name = ""
                 
                 # Determine resource based on sensor type
@@ -194,6 +201,16 @@ class DeviceDataManager(IDataMessageListener):
                 if resource_name:
                     logging.debug(f"Upstream CoAP transmission: {resource_name}")
                     self._sendCoapRequest(resource_name, json_data)
+            
+            # Send sensor data via MQTT if enabled
+            if self.enableMqttClient and self.mqttClient:
+                json_data = self.dataUtil.sensorDataToJson(data)
+                self.mqttClient.publishMessage(
+                    ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE,
+                    json_data,
+                    qos=ConfigConst.DEFAULT_QOS
+                )
+                logging.debug("Published sensor data via MQTT")
             
             self._handleSensorDataAnalysis(data=data)
             return True
@@ -210,9 +227,19 @@ class DeviceDataManager(IDataMessageListener):
             
             # Send system performance data via CoAP if enabled
             if self.enableCoapClient and self.coapClient:
-                json_data = data.toJson()
+                json_data = self.dataUtil.systemPerformanceDataToJson(data)
                 logging.debug("Upstream CoAP transmission: systemperf")
                 self._sendCoapRequest(ConfigConst.SYSTEM_PERF_RESOURCE, json_data)
+            
+            # Send system performance data via MQTT if enabled
+            if self.enableMqttClient and self.mqttClient:
+                json_data = self.dataUtil.systemPerformanceDataToJson(data)
+                self.mqttClient.publishMessage(
+                    ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE,
+                    json_data,
+                    qos=ConfigConst.DEFAULT_QOS
+                )
+                logging.debug("Published system performance data via MQTT")
             
             return True
         else:
@@ -269,22 +296,57 @@ class DeviceDataManager(IDataMessageListener):
     def _handleSensorDataAnalysis(self, data: SensorData = None):
         """
         Analyze sensor data and trigger actuation if needed.
+        Only triggers actuation on threshold crossings, not on every reading.
         """
         if self.handleTempChangeOnDevice and data.getTypeID() == ConfigConst.TEMP_SENSOR_TYPE:
-            logging.info("Handle temp change: %s - type ID: %s", str(self.handleTempChangeOnDevice), str(data.getTypeID()))
+            currentTemp = data.getValue()
             
+            # Determine if we need to trigger actuation based on threshold crossings
+            shouldTriggerActuation = False
             ad = ActuatorData(typeID=ConfigConst.HVAC_ACTUATOR_TYPE)
             
-            if data.getValue() > self.triggerHvacTempCeiling:
-                ad.setCommand(ConfigConst.COMMAND_ON)
-                ad.setValue(self.triggerHvacTempCeiling)
-            elif data.getValue() < self.triggerHvacTempFloor:
-                ad.setCommand(ConfigConst.COMMAND_ON)
-                ad.setValue(self.triggerHvacTempFloor)
-            else:
-                ad.setCommand(ConfigConst.COMMAND_OFF)
+            # Check if temperature crossed ABOVE ceiling (need cooling)
+            if currentTemp > self.triggerHvacTempCeiling:
+                if not self.isCoolingActive:
+                    # Temperature just crossed above ceiling
+                    logging.info(f"Temperature {currentTemp}°C crossed ABOVE ceiling {self.triggerHvacTempCeiling}°C - activating cooling")
+                    ad.setCommand(ConfigConst.COMMAND_ON)
+                    ad.setValue(self.triggerHvacTempCeiling)
+                    ad.setName("HVAC Cooling")
+                    self.isCoolingActive = True
+                    self.isHeatingActive = False
+                    shouldTriggerActuation = True
             
-            self.handleActuatorCommandMessage(ad)
+            # Check if temperature crossed BELOW floor (need heating)
+            elif currentTemp < self.triggerHvacTempFloor:
+                if not self.isHeatingActive:
+                    # Temperature just crossed below floor
+                    logging.info(f"Temperature {currentTemp}°C crossed BELOW floor {self.triggerHvacTempFloor}°C - activating heating")
+                    ad.setCommand(ConfigConst.COMMAND_ON)
+                    ad.setValue(self.triggerHvacTempFloor)
+                    ad.setName("HVAC Heating")
+                    self.isHeatingActive = True
+                    self.isCoolingActive = False
+                    shouldTriggerActuation = True
+            
+            # Temperature is within acceptable range
+            else:
+                if self.isHeatingActive or self.isCoolingActive:
+                    # Temperature returned to normal range
+                    logging.info(f"Temperature {currentTemp}°C returned to normal range ({self.triggerHvacTempFloor}°C - {self.triggerHvacTempCeiling}°C) - deactivating HVAC")
+                    ad.setCommand(ConfigConst.COMMAND_OFF)
+                    ad.setName("HVAC Off")
+                    self.isHeatingActive = False
+                    self.isCoolingActive = False
+                    shouldTriggerActuation = True
+            
+            # Only send actuation command if state changed
+            if shouldTriggerActuation:
+                logging.info(f"Triggering actuation: {ad.getName()} - Command: {ad.getCommand()}")
+                self.handleActuatorCommandMessage(ad)
+            
+            # Update last known temperature
+            self.lastKnownTemp = currentTemp
     
     def _handleIncomingDataAnalysis(self, msg: str):
         """
