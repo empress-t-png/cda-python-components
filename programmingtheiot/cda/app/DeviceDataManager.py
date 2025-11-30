@@ -116,47 +116,20 @@ class DeviceDataManager(IDataMessageListener):
         self.isHeatingActive = False
         self.isCoolingActive = False
     
-    def _sendCoapRequest(self, resource: str, data: str = None) -> bool:
+    def handleActuatorCommandMessage(self, data: ActuatorData) -> ActuatorData:
         """
-        Send data via CoAP to the gateway device
-        """
-        if not self.coapClient:
-            logging.warning("CoAP client not enabled or initialized")
-            return False
+        Callback function to handle an actuator command message packaged as a ActuatorData object.
         
-        try:
-            import asyncio
-            from aiocoap import Code
-            success = asyncio.run(
-                self.coapClient.sendRequest(resource, data, Code.POST)
-            )
-            
-            if success:
-                logging.debug(f"CoAP request successful for resource: {resource}")
-            else:
-                logging.warning(f"CoAP request failed for resource: {resource}")
-                
-            return success
-            
-        except Exception as e:
-            logging.error(f"CoAP transmission error for {resource}: {e}")
-            return False
-    
-    def handleActuatorCommandMessage(self, data: ActuatorData = None) -> ActuatorData:
+        @param data The ActuatorData message received.
+        @return ActuatorData The response from the actuator, or None if invalid.
         """
-        Handle actuator command message.
-        """
-        logging.info("Actuator data: " + str(data))
-        
         if data:
             logging.info("Processing actuator command message.")
-            if self.actuatorAdapterMgr:
-                return self.actuatorAdapterMgr.sendActuatorCommand(data)
-            else:
-                logging.warning("Actuator manager not available")
-                return None
+            
+            # TODO: add further validation before sending the command
+            return self.actuatorAdapterMgr.sendActuatorCommand(data)
         else:
-            logging.warning("Incoming actuator command is invalid (null). Ignoring.")
+            logging.warning("Received invalid ActuatorData command message. Ignoring.")
             return None
     
     def handleActuatorCommandResponse(self, data: ActuatorData = None) -> bool:
@@ -182,37 +155,17 @@ class DeviceDataManager(IDataMessageListener):
         Handle sensor message.
         """
         if data:
-            logging.debug("Incoming sensor data received (from sensor manager): " + str(data))
+            logging.info("Incoming sensor data received (from sensor manager): " + str(data))
             
-            # Send sensor data via CoAP if enabled
-            if self.enableCoapClient and self.coapClient:
-                json_data = self.dataUtil.sensorDataToJson(data)
-                resource_name = ""
-                
-                # Determine resource based on sensor type
-                if hasattr(data, 'typeID'):
-                    if data.typeID == ConfigConst.TEMP_SENSOR_TYPE:
-                        resource_name = ConfigConst.TEMPERATURE_RESOURCE
-                    elif data.typeID == ConfigConst.HUMIDITY_SENSOR_TYPE:
-                        resource_name = ConfigConst.HUMIDITY_RESOURCE
-                    elif data.typeID == ConfigConst.PRESSURE_SENSOR_TYPE:
-                        resource_name = ConfigConst.PRESSURE_RESOURCE
-                
-                if resource_name:
-                    logging.debug(f"Upstream CoAP transmission: {resource_name}")
-                    self._sendCoapRequest(resource_name, json_data)
-            
-            # Send sensor data via MQTT if enabled
-            if self.enableMqttClient and self.mqttClient:
-                json_data = self.dataUtil.sensorDataToJson(data)
-                self.mqttClient.publishMessage(
-                    ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE,
-                    json_data,
-                    qos=ConfigConst.DEFAULT_QOS
-                )
-                logging.debug("Published sensor data via MQTT")
-            
+            # Perform sensor data analysis (threshold checking)
             self._handleSensorDataAnalysis(data=data)
+            
+            # Convert SensorData to JSON
+            jsonData = self.dataUtil.sensorDataToJson(data=data)
+            
+            # Send to GDA via upstream transmission
+            self._handleUpstreamTransmission(resource=ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, msg=jsonData)
+            
             return True
         else:
             logging.warning("Incoming sensor data is invalid (null). Ignoring.")
@@ -223,23 +176,13 @@ class DeviceDataManager(IDataMessageListener):
         Handle system performance message.
         """
         if data:
-            logging.debug("Incoming system performance message received (from sys perf manager): " + str(data))
+            logging.info("Incoming system performance message received (from sys perf manager): " + str(data))
             
-            # Send system performance data via CoAP if enabled
-            if self.enableCoapClient and self.coapClient:
-                json_data = self.dataUtil.systemPerformanceDataToJson(data)
-                logging.debug("Upstream CoAP transmission: systemperf")
-                self._sendCoapRequest(ConfigConst.SYSTEM_PERF_RESOURCE, json_data)
+            # Convert SystemPerformanceData to JSON
+            jsonData = self.dataUtil.systemPerformanceDataToJson(data=data)
             
-            # Send system performance data via MQTT if enabled
-            if self.enableMqttClient and self.mqttClient:
-                json_data = self.dataUtil.systemPerformanceDataToJson(data)
-                self.mqttClient.publishMessage(
-                    ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE,
-                    json_data,
-                    qos=ConfigConst.DEFAULT_QOS
-                )
-                logging.debug("Published system performance data via MQTT")
+            # Send to GDA via upstream transmission
+            self._handleUpstreamTransmission(resource=ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE, msg=jsonData)
             
             return True
         else:
@@ -354,8 +297,25 @@ class DeviceDataManager(IDataMessageListener):
         """
         logging.debug("Incoming data analysis: " + msg)
     
-    def _handleUpstreamTransmission(self, resourceName: ResourceNameEnum, msg: str):
+    def _handleUpstreamTransmission(self, resource = None, msg: str = None):
         """
-        Handle upstream transmission.
+        Handles upstream transmission of data to the GDA using MQTT or CoAP.
+        
+        @param resource: The resource name (topic for MQTT, path for CoAP)
+        @param msg: The message payload (JSON string)
         """
-        logging.debug("Upstream transmission: " + str(resourceName))
+        logging.info("Upstream transmission invoked. Checking comm's integration.")
+        
+        # NOTE: If using MQTT, the following will attempt to publish the message to the broker
+        if self.mqttClient:
+            if self.mqttClient.publishMessage(resource = resource, msg = msg):
+                logging.debug("Published incoming data to resource (MQTT): %s", str(resource))
+            else:
+                logging.warning("Failed to publish incoming data to resource (MQTT): %s", str(resource))
+        
+        # NOTE: If using CoAP, the following will attempt to PUT the message to the server
+        if self.coapClient:
+            if self.coapClient.sendPutRequest(resource = resource, payload = msg):
+                logging.debug("Put incoming message data to resource (CoAP): %s", str(resource))
+            else:
+                logging.warning("Failed to put incoming message data to resource (CoAP): %s", str(resource))

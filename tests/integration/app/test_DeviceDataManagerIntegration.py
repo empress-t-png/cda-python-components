@@ -9,7 +9,6 @@
 
 import logging
 import unittest
-
 from time import sleep
 
 import programmingtheiot.common.ConfigConst as ConfigConst
@@ -44,19 +43,29 @@ class DeviceDataManagerIntegrationTest(unittest.TestCase):
 		
 	def setUp(self):
 		pass
-
+	
 	def tearDown(self):
 		pass
-
-	@unittest.skip("Ignore for now.")
+	
 	def testDeviceDataMgrTimedIntegration(self):
+		"""
+		Test DeviceDataManager integration with MQTT or CoAP for 5 minutes.
+		
+		OPTION 1: For MQTT testing - be sure the MQTT client is enabled in PiotConfig.props
+		          and your MQTT broker is running.
+		OPTION 2: For CoAP testing - be sure the CoAP client is enabled in PiotConfig.props,
+		          and your CoAP server is running within your GDA.
+		"""
 		ddMgr = DeviceDataManager()
 		ddMgr.startManager()
 		
-		sleep(60)
+		# 5 min's should be long enough to run the tests and manually adjust the emulator values
+		logging.info("DeviceDataManager started. Running for 5 minutes (300 seconds)...")
+		logging.info("Adjust the SenseHAT emulator temperature slider to test threshold crossing.")
+		sleep(300)
 		
 		ddMgr.stopManager()
+		logging.info("DeviceDataManager stopped.")
 		
 if __name__ == "__main__":
 	unittest.main()
-	
