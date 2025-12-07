@@ -10,8 +10,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
 from programmingtheiot.cda.connection.CoapClientConnector import CoapClientConnector
 from programmingtheiot.common.ResourceNameEnum import ResourceNameEnum
 from programmingtheiot.data.SensorData import SensorData
-from programmingtheiot.common.DataUtil import DataUtil
-
+from programmingtheiot.data.DataUtil import DataUtil
 logging.basicConfig(level=logging.INFO)
 
 def test_put_functionality():

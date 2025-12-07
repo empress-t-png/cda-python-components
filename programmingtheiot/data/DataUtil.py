@@ -17,29 +17,11 @@ class DataUtil:
         logging.info("Created DataUtil instance.")
     
     def sensorDataToJson(self, data: SensorData) -> str:
-        """
-        Convert SensorData to JSON string
-        
-        Args:
-            data: SensorData instance
-            
-        Returns:
-            JSON string representation
-        """
         if data:
             return json.dumps(self._sensorDataToDict(data))
         return None
     
     def _sensorDataToDict(self, data: SensorData) -> dict:
-        """
-        Convert SensorData to dictionary
-        
-        Args:
-            data: SensorData instance
-            
-        Returns:
-            Dictionary representation
-        """
         if data:
             data_dict = {
                 "name": data.getName(),
@@ -51,70 +33,95 @@ class DataUtil:
                 "longitude": data.getLongitude(),
                 "elevation": data.getElevation()
             }
-            
-            # Only add value if it's not None
             if data.getValue() is not None:
                 data_dict["value"] = data.getValue()
-                
             return data_dict
         return None
     
     def jsonToSensorData(self, jsonData: str) -> SensorData:
-        """
-        Convert JSON string to SensorData
-        
-        Args:
-            jsonData: JSON string
-            
-        Returns:
-            SensorData instance
-        """
         if jsonData:
             try:
                 data_dict = json.loads(jsonData)
                 sensor_data = SensorData()
-                
-                # Set properties from dictionary
                 if "name" in data_dict:
                     sensor_data.setName(data_dict["name"])
                 if "value" in data_dict:
                     sensor_data.setValue(data_dict["value"])
                 if "timeStamp" in data_dict:
-                    sensor_data.setTimeStamp(data_dict["timeStamp"])
+                    # FIX: SensorData has no setTime(), assign directly
+                    sensor_data.timeStamp = data_dict["timeStamp"]
                 if "typeID" in data_dict:
                     sensor_data.setTypeID(data_dict["typeID"])
                 if "locationID" in data_dict:
                     sensor_data.setLocationID(data_dict["locationID"])
-                    
                 return sensor_data
             except Exception as e:
                 logging.error(f"Error converting JSON to SensorData: {e}")
         return None
+    
+    def actuatorDataToJson(self, data: ActuatorData) -> str:
+        if data:
+            logging.debug(f"Encoding ActuatorData to JSON [pre]  --> {data}")
+            json_str = json.dumps(self._actuatorDataToDict(data), indent=4)
+            logging.info(f"Encoding ActuatorData to JSON [post] --> {json_str}")
+            return json_str
+        return None
+    
+    def _actuatorDataToDict(self, data: ActuatorData) -> dict:
+        if data:
+            data_dict = {
+                "timeStamp": str(data.getTimeStamp()),
+                "name": data.getName(),
+                "hasError": data.hasError,
+                "statusCode": data.getStatusCode(),
+                "isResponse": data.isResponseFlagEnabled(),
+                "actuatorType": data.getTypeID(),
+                "command": data.getCommand(),
+                "stateData": data.getStateData(),
+                "curValue": data.getValue()
+            }
+            return data_dict
+        return None
+    
+    def jsonToActuatorData(self, jsonData: str) -> ActuatorData:
+        if jsonData:
+            try:
+                logging.debug(f"Decoding ActuatorData from JSON [pre]  --> {jsonData}")
+                data_dict = json.loads(jsonData)
+                actuator_data = ActuatorData()
+                if "name" in data_dict:
+                    actuator_data.setName(data_dict["name"])
+                if "actuatorType" in data_dict or "typeID" in data_dict:
+                    type_id = data_dict.get("actuatorType", data_dict.get("typeID"))
+                    actuator_data.setTypeID(type_id)
+                if "command" in data_dict:
+                    actuator_data.setCommand(data_dict["command"])
+                if "stateData" in data_dict:
+                    actuator_data.setStateData(data_dict["stateData"])
+                if "curValue" in data_dict or "value" in data_dict:
+                    value = data_dict.get("curValue", data_dict.get("value"))
+                    actuator_data.setValue(value)
+                if "timeStamp" in data_dict:
+                    # FIX: ActuatorData has no setTime(), assign directly
+                    actuator_data.timeStamp = data_dict["timeStamp"]
+                if "locationID" in data_dict:
+                    actuator_data.setLocationID(data_dict["locationID"])
+                if "statusCode" in data_dict:
+                    actuator_data.setStatusCode(data_dict["statusCode"])
+                if "isResponse" in data_dict and data_dict["isResponse"]:
+                    actuator_data.setAsResponse()
+                logging.debug(f"Decoding ActuatorData from JSON [post] --> {actuator_data}")
+                return actuator_data
+            except Exception as e:
+                logging.exception(f"Error converting JSON to ActuatorData: {e}")
+        return None
 
     def systemPerformanceDataToJson(self, data: SystemPerformanceData) -> str:
-        """
-        Convert SystemPerformanceData to JSON string
-        
-        Args:
-            data: SystemPerformanceData instance
-            
-        Returns:
-            JSON string representation
-        """
         if data:
             return json.dumps(self._systemPerformanceDataToDict(data))
         return None
     
     def _systemPerformanceDataToDict(self, data: SystemPerformanceData) -> dict:
-        """
-        Convert SystemPerformanceData to dictionary
-        
-        Args:
-            data: SystemPerformanceData instance
-            
-        Returns:
-            Dictionary representation
-        """
         if data:
             data_dict = {
                 "name": data.getName(),
@@ -127,20 +134,3 @@ class DataUtil:
             }
             return data_dict
         return None
-
-# Example usage when run directly
-if __name__ == "__main__":
-    util = DataUtil()
-    
-    # Test SensorData conversion
-    sensor = SensorData()
-    sensor.setName("TestSensor")
-    sensor.setValue(25.5)
-    sensor.setTypeID(1)
-    
-    json_str = util.sensorDataToJson(sensor)
-    print(f"SensorData JSON: {json_str}")
-    
-    # Test converting back
-    sensor_back = util.jsonToSensorData(json_str)
-    print(f"Converted back - Name: {sensor_back.getName()}, Value: {sensor_back.getValue()}")

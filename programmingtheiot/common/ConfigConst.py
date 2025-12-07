@@ -188,6 +188,10 @@ CDA_REGISTRATION_REQUEST_RESOURCE     = PRODUCT_NAME + '/' + CONSTRAINED_DEVICE 
 CDA_SENSOR_DATA_MSG_RESOURCE          = PRODUCT_NAME + '/' + CONSTRAINED_DEVICE + '/' + SENSOR_MSG
 CDA_SYSTEM_PERF_MSG_RESOURCE          = PRODUCT_NAME + '/' + CONSTRAINED_DEVICE + '/' + SYSTEM_PERF_MSG
 
+# Add GDA topics for CDA to subscribe to
+GDA_ACTUATOR_CMD_MSG_RESOURCE         = PRODUCT_NAME + '/' + GATEWAY_SERVICE + '/' + ACTUATOR_CMD
+GDA_ACTUATOR_RESPONSE_MSG_RESOURCE    = PRODUCT_NAME + '/' + GATEWAY_SERVICE + '/' + ACTUATOR_RESPONSE
+
 #####
 # Configuration Sections, Keys and Defaults
 #
@@ -274,7 +278,7 @@ ENABLE_COAP_SERVER_KEY = 'enableCoapServer'
 
 ENABLE_SYSTEM_PERF_KEY = 'enableSystemPerformance'
 ENABLE_SENSING_KEY     = 'enableSensing'
-
+ENABLE_ACTUATION_KEY   = 'enableActuation'
 HUMIDITY_SIM_FLOOR_KEY   = 'humiditySimFloor'
 HUMIDITY_SIM_CEILING_KEY = 'humiditySimCeiling'
 PRESSURE_SIM_FLOOR_KEY   = 'pressureSimFloor'
@@ -310,3 +314,18 @@ MAX_MOTION_FRAMES_BEFORE_ACTION_KEY = 'maxMotionFramesBeforeAction'
 MAX_CACHED_FRAMES_KEY      = 'maxCachedFrames'
 STORE_INTERIM_FRAMES_KEY   = 'storeInterimFrames'
 INCLUDE_RAW_IMAGE_DATA_IN_MSG_KEY = 'includeRawImageDataInMsg'
+
+# Add threshold configuration keys for integration testing
+NOMINAL_HUMIDITY_KEY    = 'nomHumidity'
+NOMINAL_TEMPERATURE_KEY = 'nomTemperature'
+NOMINAL_PRESSURE_KEY    = 'nomPressure'
+
+HUMIDITY_FLOOR_KEY      = 'humidFloor'
+HUMIDITY_CEILING_KEY    = 'humidCeiling'
+TEMPERATURE_FLOOR_KEY   = 'tempFloor'
+TEMPERATURE_CEILING_KEY = 'tempCeiling'
+PRESSURE_FLOOR_KEY      = 'pressureFloor'
+PRESSURE_CEILING_KEY    = 'pressureCeiling'
+
+# Add Data Analysis configuration for GDA
+ENABLE_DATA_ANALYSIS_KEY = 'enableDataAnalysis'
