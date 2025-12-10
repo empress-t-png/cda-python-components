@@ -62,8 +62,8 @@ tempSimCeiling = 25.0
 
 # configurable limits for actuator triggers
 handleTempChangeOnDevice = True
-triggerHvacTempFloor = 18.0
-triggerHvacTempCeiling = 20.0
+triggerHvacTempFloor = 20.0
+triggerHvacTempCeiling = 24.0
 
 # camera settings
 streamHostAddr = 127.0.0.1
