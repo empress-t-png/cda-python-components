@@ -16,6 +16,7 @@ from programmingtheiot.common.ResourceNameEnum import ResourceNameEnum
 from programmingtheiot.cda.system.ActuatorAdapterManager import ActuatorAdapterManager
 from programmingtheiot.cda.system.SensorAdapterManager import SensorAdapterManager
 from programmingtheiot.cda.system.SystemPerformanceManager import SystemPerformanceManager
+from programmingtheiot.data.DataUtil import DataUtil
 from programmingtheiot.cda.connection.MqttClientConnector import MqttClientConnector
 from programmingtheiot.cda.connection.CoapClientConnector import CoapClientConnector
 from programmingtheiot.data.ActuatorData import ActuatorData
@@ -29,7 +30,7 @@ class DeviceDataManager(IDataMessageListener):
     
     def __init__(self):
         self.configUtil = ConfigUtil()
-        
+        self.dataUtil = DataUtil()
         self.enableSystemPerf = \
             self.configUtil.getBoolean(
                 section=ConfigConst.CONSTRAINED_DEVICE, 
@@ -121,7 +122,7 @@ class DeviceDataManager(IDataMessageListener):
             import asyncio
             from aiocoap import Code
             success = asyncio.run(
-                self.coapClient.sendRequest(resource, data, Code.POST)
+               self.coapClient.sendPostRequest(resource=resource, payload=data)
             )
             
             if success:
@@ -179,9 +180,9 @@ class DeviceDataManager(IDataMessageListener):
             
             # Send sensor data via CoAP if enabled
             if self.enableCoapClient and self.coapClient:
-                json_data = data.toJson()
+                json_data = self.dataUtil.sensorDataToJson(data)
                 resource_name = ""
-                
+               
                 # Determine resource based on sensor type
                 if hasattr(data, 'typeID'):
                     if data.typeID == ConfigConst.TEMP_SENSOR_TYPE:
@@ -210,7 +211,7 @@ class DeviceDataManager(IDataMessageListener):
             
             # Send system performance data via CoAP if enabled
             if self.enableCoapClient and self.coapClient:
-                json_data = data.toJson()
+                json_data = self.dataUtil.systemPerformanceDataToJson(data)
                 logging.debug("Upstream CoAP transmission: systemperf")
                 self._sendCoapRequest(ConfigConst.SYSTEM_PERF_RESOURCE, json_data)
             

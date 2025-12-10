@@ -39,8 +39,8 @@ enableCoap = True
 #
 [ConstrainedDevice]
 deviceLocationID = constraineddevice001
-enableEmulator = True
-enableSenseHAT = False
+Emulator = False
+enableSenseHAT = True
 enableMqttClient = True
 enableCoapServer = False
 enableCoapClient = True

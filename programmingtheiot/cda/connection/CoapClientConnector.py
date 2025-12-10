@@ -122,9 +122,32 @@ class CoapClientConnector(IRequestResponseClient):
         Sends a POST request to the CoAP server.
         
         """
-        logging.info("POST functionality not yet implemented.")
-        return False
-    
+        if not resource:
+            logging.warning("No resource specified for POST request")
+            return False
+        
+        # Handle both string and ResourceNameEnum
+        if isinstance(resource, str):
+            resourcePath = resource
+        else:
+            resourcePath = self._createResourcePath(resource, name)
+        
+        try:
+            logging.info(f"Sending POST to resource: {resourcePath}")
+            response = self.coapClient.post(resourcePath, payload)
+            
+            if response:
+                logging.info(f"POST response received: {response.pretty_print()}")
+                return True
+            else:
+                logging.warning("No response received for POST request")
+                return False
+                
+        except Exception as e:
+            logging.error(f"Failed to send POST request: {e}")
+            return False
+
+ 
     def sendPutRequest(self, resource: ResourceNameEnum = None, name: str = None, enableCON: bool = False, payload: str = None, timeout: int = IRequestResponseClient.DEFAULT_TIMEOUT) -> bool:
         """
         Sends a PUT request to the CoAP server.
