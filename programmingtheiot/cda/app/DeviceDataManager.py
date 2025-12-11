@@ -178,11 +178,11 @@ class DeviceDataManager(IDataMessageListener):
         if data:
             logging.debug("Incoming sensor data received (from sensor manager): " + str(data))
             
-            # Send sensor data via CoAP if enabled
-            if self.enableCoapClient and self.coapClient:
+        # Send sensor data via CoAP if enabled
+            if False:  # Temporarily disabled for 1-hour test
                 json_data = self.dataUtil.sensorDataToJson(data)
                 resource_name = ""
-               
+                
                 # Determine resource based on sensor type
                 if hasattr(data, 'typeID'):
                     if data.typeID == ConfigConst.TEMP_SENSOR_TYPE:
