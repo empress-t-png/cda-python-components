@@ -178,7 +178,7 @@ class DeviceDataManager(IDataMessageListener):
         if data:
             logging.debug("Incoming sensor data received (from sensor manager): " + str(data))
             
-        # Send sensor data via CoAP if enabled
+            # Send sensor data via CoAP if enabled
             if False:  # Temporarily disabled for 1-hour test
                 json_data = self.dataUtil.sensorDataToJson(data)
                 resource_name = ""
@@ -195,6 +195,12 @@ class DeviceDataManager(IDataMessageListener):
                 if resource_name:
                     logging.debug(f"Upstream CoAP transmission: {resource_name}")
                     self._sendCoapRequest(resource_name, json_data)
+            
+            # Publish sensor data via MQTT
+            if self.mqttClient:
+                json_data = self.dataUtil.sensorDataToJson(data)
+                self.mqttClient.publishMessage(resource=ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, msg=json_data, qos=0)
+                logging.info("Published sensor data to MQTT broker")
             
             self._handleSensorDataAnalysis(data=data)
             return True
